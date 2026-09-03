@@ -19,3 +19,7 @@ Pillow==10.1.0
 # For creating public shareable links (optional)
 # pip install pyngrok
 # Then run: ngrok http 5000
+
+# Optional: narrow CORS for development when React runs on a separate origin.
+# Not required when using the Vite dev-server proxy or same-origin deploys.
+# flask-cors==4.0.0

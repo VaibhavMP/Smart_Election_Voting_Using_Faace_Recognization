@@ -12,6 +12,28 @@ from functools import wraps
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))  # Secure secret key for sessions
 
+# Register the JSON REST API (used by the React frontend).
+try:
+    from api import api_bp
+    app.register_blueprint(api_bp)
+except ImportError:
+    # The migration keeps the original template-based routes working even
+    # if the API module fails to load for some reason.
+    pass
+
+# Optional narrow CORS for development only. In production we prefer same-origin
+# (React build served by Flask) and keep this disabled.
+if os.environ.get('ENABLE_CORS', '').lower() in ('1', 'true', 'yes'):
+    try:
+        from flask_cors import CORS
+        CORS(
+            app,
+            resources={r"/api/*": {"origins": os.environ.get('CORS_ORIGINS', 'http://127.0.0.1:5173')}},
+            supports_credentials=True,
+        )
+    except ImportError:
+        print("[warn] flask-cors not installed; CORS disabled.")
+
 # Auto-create public link (for sharing) - only in local development
 import sys
 if not any('gunicorn' in arg for arg in sys.argv):
@@ -445,6 +467,15 @@ def video_feed():
 
 @app.errorhandler(404)
 def page_not_found(e):
+    # If the React production build is present, let it handle 404s so that
+    # client-side routing keeps working on hard refresh.
+    if os.path.exists('frontend/dist/index.html'):
+        try:
+            from flask import send_from_directory
+
+            return send_from_directory('frontend/dist', 'index.html')
+        except Exception:
+            pass
     return render_template('error.html', error='Page not found'), 404
 
 
@@ -454,8 +485,32 @@ def internal_error(e):
 
 
 # ----------------------------
-# MAIN
+# OPTIONAL: SERVE REACT BUILD
 # ----------------------------
+
+def _register_react_static():
+    """If the React production build exists, mount it at / so the SPA is
+    served by Flask. This is only used in deploy; during local development
+    React is served by Vite on :5173 and proxies /api to Flask."""
+    build_dir = os.path.join('frontend', 'dist')
+    if not os.path.exists(os.path.join(build_dir, 'index.html')):
+        return
+    from flask import send_from_directory
+
+    @app.route('/')
+    def _spa_root():
+        return send_from_directory(build_dir, 'index.html')
+
+    @app.route('/<path:path>')
+    def _spa_assets(path):
+        full = os.path.join(build_dir, path)
+        if os.path.isfile(full):
+            return send_from_directory(build_dir, path)
+        # SPA fallback so client-side routes work on hard refresh.
+        return send_from_directory(build_dir, 'index.html')
+
+
+_register_react_static()
 
 if __name__ == '__main__':
     # Initialize database

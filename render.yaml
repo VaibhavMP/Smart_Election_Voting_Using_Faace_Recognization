@@ -2,10 +2,16 @@ services:
   - type: web
     name: smart-voting
     runtime: python
-    buildCommand: pip install -r requirments.txt
+    buildCommand: pip install -r requirments.txt && npm --prefix frontend ci && npm --prefix frontend run build
     startCommand: gunicorn app:app --workers 2 --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: FLASK_DEBUG
         value: false
+      # Optional: set to 1 only if you front the API with a separate origin.
+      - key: ENABLE_CORS
+        value: ""
+      - key: SECRET_KEY
+        generateValue: true
+        sync: false
