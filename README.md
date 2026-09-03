@@ -84,25 +84,28 @@ Smart_Election_Voting_Using_Faace_Recognization/
 ├── model/face_model.pkl  # Pre-trained model artifacts
 ├── data/                 # Existing CLI-captured face dataset
 ├── static/               # Hero image, logo, per-user face.png
-├── templates/            # Legacy Flask templates (kept as a safety net)
 ├── requirments.txt       # Python deps, pinned for Python 3.11
 ├── Procfile / render.yaml / runtime.txt
 ├── smoke_test.py         # 20-case backend test suite
-└── frontend/             # React + Vite single-page application
+└── frontend/             # React + Vite single-page application (the only frontend)
     ├── src/
     │   ├── components/   # ProtectedRoute, WebcamCapture, Alert, Spinner
     │   ├── pages/        # Splash, Home, Login, Signup, Dashboard,
     │   │                 #   FaceVerify, Vote, VoteSuccess, Results, Profile
-    │   ├── context/      # AuthContext
-    │   ├── services/     # Axios-backed API wrappers
-    │   ├── hooks/        # useMessage
-    │   ├── utils/        # format helpers
-    │   ├── styles/       # global.css
-    │   ├── App.jsx
-    │   └── main.jsx
+│   ├── context/      # AuthContext
+│   ├── services/     # Axios-backed API wrappers
+│   ├── hooks/        # useMessage
+│   ├── utils/        # format helpers
+│   ├── styles/       # global.css
+│   ├── App.jsx
+│   └── main.jsx
     ├── vite.config.js    # Proxies /api/* and /static/* to :5000 in dev
     └── package.json
 ```
+
+The legacy Flask templates (`templates/`, `static/css/style.css`,
+`static/js/main.js`) were removed when the migration finished. The React
+SPA under `frontend/` is now the only frontend.
 
 ---
 
