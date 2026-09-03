@@ -137,6 +137,10 @@ except Exception as e:
     print(f"[FAIL] api.py import failed: {e}")
     sys.exit(1)
 
+# Use a temp face-image directory so the test never overwrites real
+# static/data/<user>/face.png files.
+os.environ["FACE_IMAGE_DIR"] = os.path.join(TMPDIR, "face_images")
+
 flask_app.register_blueprint(api_bp)
 
 # Ensure the test DB has the schema.

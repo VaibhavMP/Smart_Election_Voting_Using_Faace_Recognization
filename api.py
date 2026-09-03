@@ -17,7 +17,7 @@ import re
 import sqlite3
 from functools import wraps
 
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, current_app, jsonify, request, session
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -88,8 +88,14 @@ def _decode_image(image_data: str):
 
 
 def _save_face_image(user_id: int, raw_bytes: bytes) -> str:
-    """Persist the captured image to static/data/<user_id>/face.png."""
-    user_folder = os.path.join("static", "data", str(user_id))
+    """Persist the captured image to <face_dir>/<user_id>/face.png.
+
+    ``face_dir`` can be overridden via the ``FACE_IMAGE_DIR`` env var so
+    tests can use a temp directory and never write into the real
+    ``static/data`` folder.
+    """
+    face_dir = os.environ.get("FACE_IMAGE_DIR", os.path.join("static", "data"))
+    user_folder = os.path.join(face_dir, str(user_id))
     os.makedirs(user_folder, exist_ok=True)
     face_file = os.path.join(user_folder, "face.png")
     with open(face_file, "wb") as f:
