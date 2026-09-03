@@ -1,263 +1,360 @@
-# Smart Election Voting System 🔗
+# Smart Election Voting System
 
-A face-recognition based online voting application — **Python Flask backend + React (Vite) frontend**.
+A face-recognition based online voting platform built with a Python Flask
+backend and a modern React frontend. The project preserves the original
+blue-glass visual identity while moving the user experience to a proper
+single-page application that talks to a clean REST API.
 
-> This is an educational/demo project. It is **not** suitable for real-world
-> elections. See *Known Limitations* at the end of this document.
-
----
-
-## 🌟 Features
-
-- **Signup / Login** — Voter ID **or** Aadhaar + password (Flask session-based auth)
-- **Profile Photo Capture** — webcam capture via `getUserMedia`
-- **Face Verification** — server-side gate before voting
-- **Voting** — candidate selection with server-enforced *one person, one vote*
-- **Results** — aggregated from SQLite, sorted by votes
-- **Profile** — view your details and registered profile photo
-- **Modern UI** — React + Vite, preserving the project's blue-gradient / glassmorphism aesthetic
+> **Educational project.** This codebase is meant to demonstrate how a
+> voting flow can be wired end-to-end. It is **not** suitable for real
+> elections. See *Known Limitations* at the bottom of this file.
 
 ---
 
-## 🏛️ Architecture
+## Table of Contents
+
+1. [Features](#features)
+2. [Architecture](#architecture)
+3. [Project Layout](#project-layout)
+4. [Quick Start](#quick-start)
+5. [REST API](#rest-api)
+6. [Database](#database)
+7. [Authentication & Sessions](#authentication--sessions)
+8. [Face Verification](#face-verification)
+9. [Voting Integrity](#voting-integrity)
+10. [Testing](#testing)
+11. [Deployment](#deployment)
+12. [Configuration](#configuration)
+14. [Known Limitations](#known-limitations)
+
+---
+
+## Features
+
+- **Account registration** with Voter ID or Aadhaar as the login handle.
+- **Profile photo capture** straight from the browser via `getUserMedia`.
+- **Face verification gate** enforced server-side before voting is allowed.
+- **One-person-one-vote** logic, validated inside a SQL transaction.
+- **Live results** with vote counts and proportional bars.
+- **Polished React UI** that keeps the original blue-gradient + glass look.
+- **No Java backend, no second server.** Python handles everything from
+  HTTP to image handling.
+
+---
+
+## Architecture
 
 ```
 ┌────────────────────┐
-│  React (Vite) SPA  │  ← http://localhost:5173 (dev)   │
-│  React Router      │     served by Flask in prod     │
-│  Axios + Context   │                                  │
-└──────────┬─────────┘                                  │
-           │  /api/*  (withCredentials: 'include')    │
-           ▼                                           │
-┌────────────────────┐                                  │
-│   Flask REST API   │  ← http://localhost:5000         │
-│   (api.py)         │                                  │
-└──────────┬─────────┘                                  │
-           │                                           │
-   ┌───────┴───────┐                                   │
-   ▼               ▼                                   │
-┌────────┐   ┌───────────────┐                         │
-│ SQLite │   │  OpenCV /     │                         │
-│   DB   │   │  scikit-learn │                         │
-└────────┘   └───────────────┘                         │
+│  React (Vite) SPA  │   served on :5173 in dev, by Flask in production
+│  React Router      │
+│  Axios + Context   │
+└──────────┬─────────┘
+           │  /api/*  (withCredentials: 'include')
+           ▼
+┌────────────────────┐
+│   Flask REST API   │   :5000 — gunicorn in production
+│   (api.py)         │
+└──────────┬─────────┘
+           │
+   ┌───────┴───────┐
+   ▼               ▼
+┌────────┐   ┌───────────────┐
+│ SQLite │   │  OpenCV /     │
+│   DB   │   │  scikit-learn │
+└────────┘   └───────────────┘
 ```
 
-- **The backend is 100% Python** (Flask + SQLite + OpenCV + scikit-learn + NumPy + Pillow).
-- **The only Node.js portion is the React frontend + Vite tooling.**
-- Face recognition / image processing stays in Python. React only opens the webcam
-  and uploads a base64 PNG to Flask.
+The split is intentional. Image capture happens in the browser because that
+is where the camera is. Everything that matters — identity checks, voting
+rules, database writes, results — stays on the server.
 
 ---
 
-## 📁 Project Structure
+## Project Layout
 
 ```
 Smart_Election_Voting_Using_Faace_Recognization/
 ├── app.py                # Flask app — registers the REST blueprint
-├── api.py                # /api/* REST endpoints (the React contract)
-├── face_utils.py         # CLI/demo helpers (kept untouched)
-├── add_faces.py          # CLI face data collection (kept untouched)
-├── give_vote.py          # CLI voting helper (kept untouched)
-├── voting.db             # SQLite database (existing — preserved)
-├── model/face_model.pkl  # Pre-trained model artifacts (kept untouched)
+├── api.py                # /api/* endpoints (the React contract)
+├── face_utils.py         # CLI/demo helpers, kept untouched
+├── add_faces.py          # CLI face data collection, kept untouched
+├── give_vote.py          # CLI voting helper, kept untouched
+├── voting.db             # SQLite database — existing data is preserved
+├── model/face_model.pkl  # Pre-trained model artifacts
 ├── data/                 # Existing CLI-captured face dataset
-├── static/               # Images + per-user face.png
-│   ├── images/           # Hero + logo (referenced by React)
-│   └── data/<user_id>/   # Captured profile photos (per user)
-├── templates/            # Legacy Flask templates (kept for fallback / parity)
-├── requirments.txt       # Python deps (Python 3.11 target)
+├── static/               # Hero image, logo, per-user face.png
+├── templates/            # Legacy Flask templates (kept as a safety net)
+├── requirments.txt       # Python deps, pinned for Python 3.11
 ├── Procfile / render.yaml / runtime.txt
-├── frontend/             # NEW: React + Vite SPA
-│   ├── src/
-│   │   ├── components/   # ProtectedRoute, WebcamCapture, Alert, Spinner
-│   │   ├── pages/        # Splash, Home, Login, Signup, Dashboard,
-│   │   │                 #   FaceVerify, Vote, VoteSuccess, Results, Profile
-│   │   ├── context/      # AuthContext
-│   │   ├── services/     # Axios-backed API wrappers
-│   │   ├── hooks/        # useMessage
-│   │   ├── utils/        # formatting helpers
-│   │   ├── styles/       # global.css (preserves original design)
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── vite.config.js    # /api + /static proxy to :5000 in dev
-│   └── package.json
-└── smoke_test.py         # 20-case backend test suite (no OpenCV needed)
+├── smoke_test.py         # 20-case backend test suite
+└── frontend/             # React + Vite single-page application
+    ├── src/
+    │   ├── components/   # ProtectedRoute, WebcamCapture, Alert, Spinner
+    │   ├── pages/        # Splash, Home, Login, Signup, Dashboard,
+    │   │                 #   FaceVerify, Vote, VoteSuccess, Results, Profile
+    │   ├── context/      # AuthContext
+    │   ├── services/     # Axios-backed API wrappers
+    │   ├── hooks/        # useMessage
+    │   ├── utils/        # format helpers
+    │   ├── styles/       # global.css
+    │   ├── App.jsx
+    │   └── main.jsx
+    ├── vite.config.js    # Proxies /api/* and /static/* to :5000 in dev
+    └── package.json
 ```
 
 ---
 
-## 🚀 Local Setup
+## Quick Start
 
-> Python 3.11 is recommended — `requirments.txt` pins versions that don't
-> have CPython 3.13 wheels yet.
+> Python 3.11 is the recommended interpreter. `requirments.txt` pins
+> versions that do not have CPython 3.13 wheels yet.
 
-### Backend (Python 3.11)
+### 1. Backend
 
 ```powershell
 py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r .\requirments.txt
 .\.venv\Scripts\python.exe app.py
-# → http://127.0.0.1:5000
 ```
 
-The first start will:
-- create `voting.db` if missing,
-- seed default candidates,
-- register `/api/*` routes alongside the legacy templates.
+The server starts on `http://127.0.0.1:5000`. On first launch it will create
+`voting.db` if it does not exist and seed the default candidate list.
 
-### Frontend (Node 18+)
+For local development, enable CORS so Vite on `:5173` can call the API
+directly when needed:
+
+```powershell
+$env:ENABLE_CORS = '1'
+$env:CORS_ORIGINS = 'http://127.0.0.1:5173'
+python app.py
+```
+
+In production, Flask serves the React build directly, so CORS is not needed.
+
+### 2. Frontend
 
 ```powershell
 cd frontend
 npm install
 npm run dev
-# → http://127.0.0.1:5173  (proxies /api/* and /static/* → :5000)
 ```
 
-Open the React app at **http://127.0.0.1:5173**.
+Open `http://localhost:5173` in your browser. Vite proxies
+`/api/*` and `/static/*` to Flask on `:5000`, so the two servers
+communicate as if they were one origin.
 
-### Production build
+### 3. Production Build
 
 ```powershell
 cd frontend
-npm run build          # produces frontend/dist/
+npm run build
 ```
 
-For a same-origin deployment, point Flask at the build output:
-
-```python
-# (handled by app.py when frontend/dist/index.html exists)
-```
+The compiled assets land in `frontend/dist/`. Flask detects this folder and
+mounts it at `/`, so a single gunicorn process serves both the API and the
+SPA.
 
 ---
 
-## 🔌 REST API
+## REST API
 
-All endpoints live under `/api/*`. The Flask session cookie (`session`) is
-authoritative — React **never** decides who is authenticated.
+All endpoints live under `/api/*`. The Flask session cookie is the source
+of truth for authentication — React never decides who is signed in.
 
-| Method | Endpoint               | Auth | Face | Description                                  |
-| ------ | ---------------------- | ---- | ---- | -------------------------------------------- |
-| GET    | `/api/health`          | —    | —    | Service health check                         |
-| POST   | `/api/auth/register`   | —    | —    | Create voter account, marks `just_registered`|
-| POST   | `/api/auth/login`      | —    | —    | Login by Voter ID **or** Aadhaar             |
-| POST   | `/api/auth/logout`     | —    | —    | Clear session                                |
-| GET    | `/api/auth/me`         | —    | —    | Returns current user + session flags         |
-| POST   | `/api/face/register`   | ✅   | —    | Save profile photo for newly registered user |
-| POST   | `/api/face/verify`     | ✅   | —    | Verify identity before voting                |
-| GET    | `/api/profile`         | ✅   | —    | Current user info + face image existence     |
-| GET    | `/api/candidates`      | ✅   | ✅   | List voting candidates                       |
-| POST   | `/api/vote`            | ✅   | ✅   | Cast vote (`{ candidate: "<party code>" }`)  |
-| GET    | `/api/results`         | ✅   | —    | Aggregated candidate totals                  |
+| Method | Endpoint               | Auth | Face | Description                                    |
+| ------ | ---------------------- | ---- | ---- | ---------------------------------------------- |
+| GET    | `/api/health`          | —    | —    | Liveness check                                 |
+| POST   | `/api/auth/register`   | —    | —    | Create a voter account                         |
+| POST   | `/api/auth/login`      | —    | —    | Login by Voter ID or Aadhaar                   |
+| POST   | `/api/auth/logout`     | —    | —    | Clear session                                  |
+| GET    | `/api/auth/me`         | —    | —    | Current user and session flags                 |
+| POST   | `/api/face/register`   | ✅   | —    | Save profile photo for a new account           |
+| POST   | `/api/face/verify`     | ✅   | —    | Verify identity before voting                  |
+| GET    | `/api/profile`         | ✅   | —    | Current user info and face image existence     |
+| GET    | `/api/candidates`      | ✅   | ✅   | List voting candidates                         |
+| POST   | `/api/vote`            | ✅   | ✅   | Cast a vote — `{ candidate: "<party code>" }`  |
+| GET    | `/api/results`         | ✅   | —    | Aggregated candidate totals                    |
 
-### Error contract
+### Error Contract
 
-All errors return JSON: `{ "error": "...", "message": "..." }` plus appropriate HTTP code:
+Errors always come back as JSON: `{ "error": "...", "message": "..." }`
+alongside an HTTP status code that matches the situation.
 
 - `400` — invalid payload
 - `401` — not authenticated
 - `403` — face verification required
 - `404` — resource not found
-- `409` — duplicate / already voted
+- `409` — duplicate or already voted
 - `500` — server error
 
----
-
-## 🗄️ Database
-
-`voting.db` is **authoritative** — its schema is unchanged:
-
-| Table       | Notes                                                                  |
-| ----------- | ---------------------------------------------------------------------- |
-| `users`     | id, name, dob, gender, aadhaar (UNIQUE), voterid (UNIQUE), contact,    |
-|             | country, password, face_encoding, has_voted (0/1), created_at          |
-| `votes`     | id, voter_id FK → users.id, candidate (party code), voted_at          |
-| `candidates`| id, name, party (UNIQUE key in practice), symbol, votes                |
-
-Existing users are **never** deleted or migrated. Candidate seeding is idempotent.
+The frontend maps these to friendly toast messages rather than dumping
+stack traces on the user.
 
 ---
 
-## 🔐 Security Notes
+## Database
 
-- **Sessions** — Flask's signed cookie session. `SECRET_KEY` should be set via env var in any non-dev environment.
-- **Passwords** — currently **SHA-256 (no salt)** to preserve backward
-  compatibility with existing users. *This is not ideal for password storage.*
-  A migration to `werkzeug.security.generate_password_hash` (scrypt / pbkdf2)
-  is a deliberate follow-up — see *Known Limitations*.
-- **CSRF** — the REST API uses session cookies + same-origin policy in
-  production. For cross-origin deployments, an explicit CSRF strategy is required.
-- **One vote** — enforced server-side: the `/api/vote` handler checks
-  `users.has_voted` inside a SQL transaction, so duplicate votes return `409`
-  even if the client bypasses the UI.
-- **Face verification** — captures and stores a profile image; the
-  `face_verified` flag is set only after a successful `POST /api/face/verify`.
-  Genuine biometric matching is **not** currently performed on the request
-  payload (this matches the legacy behaviour).
-- **CORS** — narrow, opt-in via `ENABLE_CORS=1` env var. In production the
-  React build is served by Flask, so CORS is not needed.
+`voting.db` is the source of truth. Its schema is unchanged from the
+original project.
+
+| Table       | Notes                                                                              |
+| ----------- | ---------------------------------------------------------------------------------- |
+| `users`     | id, name, dob, gender, aadhaar (UNIQUE), voterid (UNIQUE), contact, country,       |
+|             | password, face_encoding, has_voted (0/1), created_at                              |
+| `votes`     | id, voter_id FK → users.id, candidate (party code), voted_at                       |
+| `candidates`| id, name, party, symbol, votes                                                      |
+
+Seeding is idempotent. Existing users, votes, and records are never
+deleted or rewritten by the application.
 
 ---
 
-## 🧪 Testing
+## Authentication & Sessions
+
+Sessions are Flask signed cookies. The signing key is read from the
+`SECRET_KEY` environment variable and falls back to a random value during
+local development. **Always set `SECRET_KEY` in any non-dev environment.**
+
+Passwords are currently stored as **SHA-256 hashes** to remain compatible
+with existing user records. SHA-256 without a salt is not an ideal choice
+for password storage, so the README flags this as a known limitation and a
+follow-up migration to `werkzeug.security.generate_password_hash` (scrypt)
+is recommended. Rehash-on-login can be added without invalidating current
+accounts.
+
+---
+
+## Face Verification
+
+The browser asks for camera permission, renders a live preview, and lets
+the user capture a single frame. The frame is sent as a base64 PNG to
+`/api/face/register` (right after signup) or `/api/face/verify` (before
+voting). The server saves the image to `static/data/<user_id>/face.png`
+and flips the `face_verified` flag in the session.
+
+Genuine biometric matching is **not** performed on the uploaded image — it
+matches the behaviour of the original implementation and is documented
+under *Known Limitations* below.
+
+---
+
+## Voting Integrity
+
+The `/api/vote` endpoint is the only path that can record a vote, and it
+enforces every rule:
+
+1. The session must contain a `user_id`.
+2. The session must contain `face_verified = True`.
+3. The candidate must exist in the `candidates` table.
+4. The user must not have voted before (`users.has_voted = 0`).
+5. The vote insert, the `users.has_voted` flip, and the candidate
+   `votes++` are wrapped in a single SQL transaction with explicit
+   `BEGIN` / `COMMIT` / `ROLLBACK`.
+
+A second vote attempt returns `409 Conflict`, even if the client bypasses
+the UI entirely.
+
+---
+
+## Testing
+
+The repository ships with a backend smoke test that exercises the full
+flow without requiring OpenCV or scikit-learn.
 
 ```powershell
-# Backend smoke tests (no OpenCV / sklearn required)
 python smoke_test.py
-# → 20/20 should pass
-
-# React production build
-cd frontend && npm run build
 ```
 
-Manual end-to-end:
+Expected result:
 
 ```
-Splash → Home → Signup → Face registration → Login
-     → Dashboard → Face verification → Vote
-     → (second Vote attempt is blocked) → Results → Profile → Logout
+[PASS] health
+[PASS] register.valid
+[PASS] register.duplicate_aadhaar
+[PASS] register.invalid_aadhaar
+[PASS] register.missing_fields
+[PASS] me.after_register
+[PASS] logout
+[PASS] me.after_logout
+[PASS] login.invalid
+[PASS] login.valid
+[PASS] vote.unverified
+[PASS] candidates.unverified
+[PASS] face.register
+[PASS] face.verify
+[PASS] candidates.loaded
+[PASS] vote.valid
+[PASS] vote.duplicate
+[PASS] vote.invalid_candidate
+[PASS] results.bjp_one
+[PASS] profile.load
+
+Summary: 20/20 tests passed
 ```
+
+The frontend ships with a clean `npm run build` (no warnings apart from the
+expected runtime-resolved static asset paths).
 
 ---
 
-## 🚢 Deployment (Render)
+## Deployment
 
-`render.yaml`, `Procfile`, and `runtime.txt` already target **Python 3.11**.
+The repository already targets Python 3.11 through `runtime.txt` and
+`render.yaml`. The recommended production layout:
 
-The recommended production layout is:
+1. `npm run build` produces `frontend/dist/`.
+2. Flask starts and detects the build output, mounting it at `/`.
+3. Gunicorn serves the combined API + SPA on a single port.
 
+`render.yaml`:
+
+```yaml
+buildCommand: pip install -r requirments.txt && npm --prefix frontend ci && npm --prefix frontend run build
+startCommand: gunicorn app:app --workers 2 --bind 0.0.0.0:$PORT
+runtime: python
+envVars:
+  PYTHON_VERSION: 3.11.0
+  FLASK_DEBUG: false
+  ENABLE_CORS: ""
+  SECRET_KEY: <generated>
 ```
-React production build (frontend/dist)
-        ↓ copied / served by
-Python Flask app (gunicorn)
-        ↓
-SQLite (voting.db persisted to disk)
-```
 
-For Render:
-
-1. `buildCommand`: `pip install -r requirments.txt && npm --prefix frontend ci && npm --prefix frontend run build`
-2. `startCommand`: `gunicorn app:app --workers 2 --bind 0.0.0.0:$PORT`
-3. Flask serves `/static/*` (existing), and when `frontend/dist/index.html`
-   is present it is also mounted at `/` so React handles routing client-side.
+For other platforms (Heroku, Fly, a plain VPS), the same shape applies:
+build the frontend, then run gunicorn.
 
 ---
 
-## 📜 Known Limitations
+## Configuration
 
-- **SHA-256 password hashing** is preserved for backward compatibility with
-  existing users. Production deployments should migrate to
-  `werkzeug.security.generate_password_hash` (scrypt) with a rehash-on-login
-  strategy.
-- **Face verification** does not currently perform biometric matching on the
-  uploaded image — it stores the photo and sets a session flag (mirrors the
-  legacy behaviour). Wiring the existing OpenCV/scikit-learn model into the
-  request flow is a separate enhancement.
-- **SQLite** is fine for an educational project but does not support
-  concurrent writers or replication. A production election platform requires
-  PostgreSQL or similar with a hardened audit trail.
-- **No CSRF tokens** are issued — safe under same-origin in production but
-  not under cross-origin.
-- **Educational only** — this code must not be used for real elections
-  without substantial additional security, privacy, accessibility, and
-  regulatory controls.
+| Variable        | Purpose                                                            |
+| --------------- | ------------------------------------------------------------------ |
+| `SECRET_KEY`    | Flask session signing key. Set in any non-dev environment.         |
+| `PORT`          | HTTP port. Defaults to `5000`.                                     |
+| `FLASK_DEBUG`   | Set to `true` for development reloads. Never enable in production. |
+| `ENABLE_CORS`   | `1` enables narrow CORS for local cross-origin dev.                |
+| `CORS_ORIGINS`  | Allowed origin for CORS (default: `http://127.0.0.1:5173`).        |
+| `FACE_IMAGE_DIR`| Override the face-image storage path (used by tests).              |
+
+---
+
+## Known Limitations
+
+- **Password hashing.** SHA-256 without a salt is preserved for backward
+  compatibility with the existing `voting.db`. A migration to scrypt via
+  `werkzeug.security` with rehash-on-login is the recommended upgrade.
+- **Biometric matching.** The web face flow captures and stores the photo
+  and flips a session flag. It does **not** run face-matching on the
+  uploaded image; that matches the original project's behaviour. Wiring
+  the existing OpenCV/scikit-learn model into the request handler is a
+  separate enhancement.
+- **CSRF.** Safe under same-origin in production. Cross-origin
+  deployments need an explicit CSRF strategy.
+- **SQLite.** Perfectly fine for a demo, not appropriate for a real
+  election. A hardened PostgreSQL deployment with proper audit trails is
+  required for any non-educational use.
+- **Not a real election system.** Treat this codebase as a learning
+  artifact. Real elections demand substantial additional work around
+  security, privacy, accessibility, identity verification, and
+  regulatory compliance.

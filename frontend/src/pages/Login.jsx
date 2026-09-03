@@ -56,11 +56,7 @@ export default function Login() {
             placeholder="Enter Password"
           />
 
-          <button
-            type="submit"
-            className="btn btn-block"
-            disabled={submitting}
-          >
+          <button type="submit" className="btn btn-block" disabled={submitting}>
             {submitting ? 'Logging in...' : 'Login'}
           </button>
         </form>

@@ -13,7 +13,7 @@ export default function WebcamCapture({
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
-  const [captured, setCaptured] = useState(null) // dataURL
+  const [captured, setCaptured] = useState(null)
   const [cameraError, setCameraError] = useState(null)
 
   useEffect(() => {
@@ -32,9 +32,9 @@ export default function WebcamCapture({
         if (videoRef.current) {
           videoRef.current.srcObject = stream
         }
-      } catch (err) {
+      } catch {
         setCameraError(
-          'Camera access denied or unavailable. Please allow camera permissions and try again.',
+          'Camera access denied or unavailable. Please allow camera permissions and try again.'
         )
       }
     }
@@ -83,11 +83,7 @@ export default function WebcamCapture({
           className={captured ? 'hidden' : ''}
         />
         {captured && (
-          <img
-            src={captured}
-            alt="Captured"
-            className="captured-image visible"
-          />
+          <img src={captured} alt="Captured" className="captured-image visible" />
         )}
         <canvas ref={canvasRef} style={{ display: 'none' }} />
       </div>
@@ -121,11 +117,7 @@ export default function WebcamCapture({
             >
               {verifyLabel}
             </button>
-            <button
-              type="button"
-              className="btn btn-neutral"
-              onClick={handleRetake}
-            >
+            <button type="button" className="btn btn-neutral" onClick={handleRetake}>
               Retake
             </button>
           </>

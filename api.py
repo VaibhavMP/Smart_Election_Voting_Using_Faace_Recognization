@@ -1,15 +1,10 @@
 """
-Flask REST API Blueprint for the Smart Election Voting System.
+Flask REST API for the Smart Election Voting System.
 
-This module exposes JSON endpoints under /api/* that the React frontend
-consumes. All business logic is delegated to helpers in ``app.py`` and the
-existing SQLite schema is reused unchanged.
-
-The blueprint is intentionally additive: existing template-based routes
-remain functional during the migration.
+Exposes JSON endpoints under /api/* that the React frontend talks to.
+Business logic is delegated to helpers in app.py; the existing SQLite
+schema is reused as-is.
 """
-
-from __future__ import annotations
 
 import base64
 import os
@@ -17,32 +12,27 @@ import re
 import sqlite3
 from functools import wraps
 
-from flask import Blueprint, current_app, jsonify, request, session
+from flask import Blueprint, jsonify, request, session
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 
-# ---------------------------------------------------------------------------
-# Helpers / decorators
-# ---------------------------------------------------------------------------
+# --- Small helpers ---------------------------------------------------------
 
-
-def _json_error(status_code: int, message: str, **extra):
+def _json_error(status_code, message, **extra):
     payload = {"error": message, "message": message}
     payload.update(extra)
     return jsonify(payload), status_code
 
 
 def _db():
-    """Open a SQLite connection using the application's DB_PATH."""
-    from app import DB_PATH, get_db_connection
+    # Reuse the app's helper so row_factory stays consistent.
+    from app import get_db_connection
 
-    # Re-use the app's helper so row_factory stays consistent.
     return get_db_connection()
 
 
-def _hash_password(password: str) -> str:
-    """SHA-256 hashing kept for backward compatibility with existing users."""
+def _hash_password(password):
     from app import hash_password
 
     return hash_password(password)
@@ -70,16 +60,13 @@ def _require_face_verified(fn):
         if "user_id" not in session:
             return _json_error(401, "Authentication required")
         if not session.get("face_verified", False):
-            return _json_error(
-                403, "Face verification required before this action"
-            )
+            return _json_error(403, "Face verification required before this action")
         return fn(*args, **kwargs)
 
     return wrapper
 
 
-def _decode_image(image_data: str):
-    """Decode a base64 (data URL or raw) image payload."""
+def _decode_image(image_data):
     if not image_data:
         raise ValueError("No image provided")
     if "base64," in image_data:
@@ -87,13 +74,8 @@ def _decode_image(image_data: str):
     return base64.b64decode(image_data)
 
 
-def _save_face_image(user_id: int, raw_bytes: bytes) -> str:
-    """Persist the captured image to <face_dir>/<user_id>/face.png.
-
-    ``face_dir`` can be overridden via the ``FACE_IMAGE_DIR`` env var so
-    tests can use a temp directory and never write into the real
-    ``static/data`` folder.
-    """
+def _save_face_image(user_id, raw_bytes):
+    # FACE_IMAGE_DIR lets tests redirect writes away from real user photos.
     face_dir = os.environ.get("FACE_IMAGE_DIR", os.path.join("static", "data"))
     user_folder = os.path.join(face_dir, str(user_id))
     os.makedirs(user_folder, exist_ok=True)
@@ -103,20 +85,14 @@ def _save_face_image(user_id: int, raw_bytes: bytes) -> str:
     return face_file
 
 
-# ---------------------------------------------------------------------------
-# Health
-# ---------------------------------------------------------------------------
-
+# --- Health ----------------------------------------------------------------
 
 @api_bp.get("/health")
 def health():
     return jsonify({"status": "ok"})
 
 
-# ---------------------------------------------------------------------------
-# Authentication
-# ---------------------------------------------------------------------------
-
+# --- Authentication --------------------------------------------------------
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -129,16 +105,8 @@ def register():
     data = request.get_json(silent=True) or {}
 
     required = [
-        "name",
-        "dob",
-        "gender",
-        "aadhaar",
-        "voterid",
-        "mobile",
-        "email",
-        "address",
-        "country",
-        "password",
+        "name", "dob", "gender", "aadhaar", "voterid",
+        "mobile", "email", "address", "country", "password",
     ]
     missing = [k for k in required if not str(data.get(k, "")).strip()]
     if missing:
@@ -203,14 +171,12 @@ def register():
     session["user_name"] = data["name"].strip()
     session["just_registered"] = True
 
-    return jsonify(
-        {
-            "success": True,
-            "user": {"id": user_id, "name": session["user_name"]},
-            "just_registered": True,
-            "face_verified": False,
-        }
-    )
+    return jsonify({
+        "success": True,
+        "user": {"id": user_id, "name": session["user_name"]},
+        "just_registered": True,
+        "face_verified": False,
+    })
 
 
 @api_bp.post("/auth/login")
@@ -250,18 +216,16 @@ def login():
     session.pop("just_registered", None)
     session.pop("face_verified", None)
 
-    return jsonify(
-        {
-            "success": True,
-            "user": {
-                "id": user["id"],
-                "name": user["name"],
-                "voterid": user["voterid"],
-            },
-            "face_verified": False,
-            "just_registered": False,
-        }
-    )
+    return jsonify({
+        "success": True,
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "voterid": user["voterid"],
+        },
+        "face_verified": False,
+        "just_registered": False,
+    })
 
 
 @api_bp.post("/auth/logout")
@@ -290,24 +254,19 @@ def me():
         session.clear()
         return _json_error(404, "User not found")
 
-    return jsonify(
-        {
-            "user": {
-                "id": user["id"],
-                "name": user["name"],
-                "voterid": user["voterid"],
-                "has_voted": user["has_voted"],
-            },
-            "face_verified": bool(session.get("face_verified", False)),
-            "just_registered": bool(session.get("just_registered", False)),
-        }
-    )
+    return jsonify({
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "voterid": user["voterid"],
+            "has_voted": user["has_voted"],
+        },
+        "face_verified": bool(session.get("face_verified", False)),
+        "just_registered": bool(session.get("just_registered", False)),
+    })
 
 
-# ---------------------------------------------------------------------------
-# Face registration / verification
-# ---------------------------------------------------------------------------
-
+# --- Face ------------------------------------------------------------------
 
 @api_bp.post("/face/register")
 @_require_auth
@@ -353,9 +312,6 @@ def face_verify():
         return _json_error(400, f"Invalid image data: {e}")
 
     user_id = session["user_id"]
-
-    # Existing behaviour: save the captured image and flag the user as verified.
-    # Genuine biometric matching would happen here. See README "Security notes".
     try:
         _save_face_image(user_id, raw)
     except OSError as e:
@@ -367,10 +323,7 @@ def face_verify():
     return jsonify({"success": True, "message": "Face verified"})
 
 
-# ---------------------------------------------------------------------------
-# Profile
-# ---------------------------------------------------------------------------
-
+# --- Profile ---------------------------------------------------------------
 
 @api_bp.get("/profile")
 @_require_auth
@@ -397,31 +350,26 @@ def profile():
     face_path = os.path.join("static", "data", str(user_id), "face.png")
     face_exists = os.path.exists(face_path)
 
-    return jsonify(
-        {
-            "user_id": user_id,
-            "user": {
-                "id": user["id"],
-                "name": user["name"],
-                "aadhaar": user["aadhaar"],
-                "voterid": user["voterid"],
-                "email": user["email"],
-                "mobile": user["mobile"],
-                "address": user["address"],
-                "dob": user["dob"],
-                "gender": user["gender"],
-                "country": user["country"],
-                "has_voted": user["has_voted"],
-            },
-            "face_exists": face_exists,
-        }
-    )
+    return jsonify({
+        "user_id": user_id,
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "aadhaar": user["aadhaar"],
+            "voterid": user["voterid"],
+            "email": user["email"],
+            "mobile": user["mobile"],
+            "address": user["address"],
+            "dob": user["dob"],
+            "gender": user["gender"],
+            "country": user["country"],
+            "has_voted": user["has_voted"],
+        },
+        "face_exists": face_exists,
+    })
 
 
-# ---------------------------------------------------------------------------
-# Candidates / Voting / Results
-# ---------------------------------------------------------------------------
-
+# --- Voting ----------------------------------------------------------------
 
 @api_bp.get("/candidates")
 @_require_face_verified
@@ -434,14 +382,12 @@ def candidates():
     finally:
         conn.close()
 
-    return jsonify(
-        {
-            "candidates": [
-                {"id": r["id"], "name": r["name"], "party": r["party"], "symbol": r["symbol"]}
-                for r in rows
-            ]
-        }
-    )
+    return jsonify({
+        "candidates": [
+            {"id": r["id"], "name": r["name"], "party": r["party"], "symbol": r["symbol"]}
+            for r in rows
+        ]
+    })
 
 
 @api_bp.post("/vote")
@@ -460,9 +406,7 @@ def cast_vote():
     try:
         cur = conn.cursor()
 
-        cur.execute(
-            "SELECT id, party FROM candidates WHERE party = ?", (candidate_party,)
-        )
+        cur.execute("SELECT id, party FROM candidates WHERE party = ?", (candidate_party,))
         candidate = cur.fetchone()
         if not candidate:
             conn.close()
@@ -484,9 +428,7 @@ def cast_vote():
                 "INSERT INTO votes (voter_id, candidate) VALUES (?, ?)",
                 (user_id, candidate_party),
             )
-            cur.execute(
-                "UPDATE users SET has_voted = 1 WHERE id = ?", (user_id,)
-            )
+            cur.execute("UPDATE users SET has_voted = 1 WHERE id = ?", (user_id,))
             cur.execute(
                 "UPDATE candidates SET votes = votes + 1 WHERE party = ?",
                 (candidate_party,),
@@ -503,13 +445,11 @@ def cast_vote():
 
         session["last_voted_party"] = candidate_party
 
-        return jsonify(
-            {
-                "success": True,
-                "candidate": candidate_party,
-                "candidate_name": full["name"] if full else candidate_party,
-            }
-        )
+        return jsonify({
+            "success": True,
+            "candidate": candidate_party,
+            "candidate_name": full["name"] if full else candidate_party,
+        })
     except sqlite3.Error as e:
         try:
             conn.close()
@@ -532,18 +472,16 @@ def results():
         conn.close()
 
     total = sum(r["votes"] for r in rows)
-    return jsonify(
-        {
-            "results": [
-                {
-                    "id": r["id"],
-                    "name": r["name"],
-                    "party": r["party"],
-                    "symbol": r["symbol"],
-                    "votes": r["votes"],
-                }
-                for r in rows
-            ],
-            "total_votes": total,
-        }
-    )
+    return jsonify({
+        "results": [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "party": r["party"],
+                "symbol": r["symbol"],
+                "votes": r["votes"],
+            }
+            for r in rows
+        ],
+        "total_votes": total,
+    })

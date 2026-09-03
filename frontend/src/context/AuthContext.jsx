@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
       setUser(data.user || null)
       setFaceVerified(Boolean(data.face_verified))
       setJustRegistered(Boolean(data.just_registered))
-    } catch (err) {
+    } catch {
       setUser(null)
       setFaceVerified(false)
     } finally {
@@ -27,16 +27,13 @@ export function AuthProvider({ children }) {
     refresh()
   }, [refresh])
 
-  const login = useCallback(
-    async (creds) => {
-      const data = await authService.login(creds)
-      setUser(data.user)
-      setFaceVerified(false)
-      setJustRegistered(false)
-      return data
-    },
-    [],
-  )
+  const login = useCallback(async (creds) => {
+    const data = await authService.login(creds)
+    setUser(data.user)
+    setFaceVerified(false)
+    setJustRegistered(false)
+    return data
+  }, [])
 
   const register = useCallback(async (payload) => {
     const data = await authService.register(payload)

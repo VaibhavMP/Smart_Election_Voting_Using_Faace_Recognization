@@ -23,7 +23,7 @@ api.interceptors.response.use(
       status: 0,
       message: 'Network error. Please check your connection.',
     })
-  },
+  }
 )
 
 export default api

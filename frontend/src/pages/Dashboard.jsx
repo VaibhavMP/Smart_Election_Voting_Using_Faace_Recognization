@@ -6,10 +6,7 @@ export default function Dashboard() {
   return (
     <div className="page-stack">
       <div className="logo-center">
-        <img
-          src="/static/images/logo%20for%20indian%20voting%20system.jpg"
-          alt="Logo"
-        />
+        <img src="/static/images/logo%20for%20indian%20voting%20system.jpg" alt="Logo" />
       </div>
 
       <h1 className="dash-title">Smart Voting System</h1>

@@ -12,10 +12,7 @@ export default function Splash() {
   return (
     <div className="splash">
       <div className="logo-circle">
-        <img
-          src="/static/images/logo%20for%20indian%20voting%20system.jpg"
-          alt="Logo"
-        />
+        <img src="/static/images/logo%20for%20indian%20voting%20system.jpg" alt="Logo" />
       </div>
       <h1>Smart Election Voting</h1>
       <p>Secure • Transparent • Digital</p>

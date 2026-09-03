@@ -60,20 +60,11 @@ export default function Signup() {
           <div className="form-grid">
             <div>
               <label>Date of Birth</label>
-              <input
-                type="date"
-                value={form.dob}
-                onChange={update('dob')}
-                required
-              />
+              <input type="date" value={form.dob} onChange={update('dob')} required />
             </div>
             <div>
               <label>Gender</label>
-              <select
-                value={form.gender}
-                onChange={update('gender')}
-                required
-              >
+              <select value={form.gender} onChange={update('gender')} required>
                 <option value="">Select</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
@@ -160,11 +151,7 @@ export default function Signup() {
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-block"
-            disabled={submitting}
-          >
+          <button type="submit" className="btn btn-block" disabled={submitting}>
             {submitting ? 'Registering...' : 'Register'}
           </button>
         </form>

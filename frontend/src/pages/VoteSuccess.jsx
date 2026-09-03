@@ -9,7 +9,10 @@ export default function VoteSuccess() {
       <div className="glass-card">
         <h1 style={{ color: '#28a745' }}>Congratulations!</h1>
         <p>You have selected</p>
-        <div className="party" style={{ fontSize: 22, fontWeight: 600, marginTop: 12, color: '#1e3a8a' }}>
+        <div
+          className="party"
+          style={{ fontSize: 22, fontWeight: 600, marginTop: 12, color: '#1e3a8a' }}
+        >
           {party}
         </div>
         <div style={{ color: 'green', marginTop: 20, fontWeight: 'bold' }}>

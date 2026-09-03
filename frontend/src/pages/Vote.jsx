@@ -50,15 +50,10 @@ export default function Vote() {
       setInfo(`You voted for ${res.candidate_name || party}. Redirecting...`)
       setTimeout(() => navigate('/vote-success'), 1200)
     } catch (err) {
-      if (err.status === 409) {
-        setError('You have already voted.')
-      } else if (err.status === 403) {
-        setError('Please verify your face first.')
-      } else if (err.status === 404) {
-        setError('Selected candidate does not exist.')
-      } else {
-        setError(err.message || 'Failed to record vote')
-      }
+      if (err.status === 409) setError('You have already voted.')
+      else if (err.status === 403) setError('Please verify your face first.')
+      else if (err.status === 404) setError('Selected candidate does not exist.')
+      else setError(err.message || 'Failed to record vote')
     } finally {
       setSubmitting(null)
     }
@@ -108,9 +103,7 @@ export default function Vote() {
         )}
 
         <div className="action-row">
-          <Link to="/dashboard" className="btn btn-neutral">
-            ← Dashboard
-          </Link>
+          <Link to="/dashboard" className="btn btn-neutral">← Dashboard</Link>
         </div>
       </div>
     </div>

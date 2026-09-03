@@ -1,7 +1,4 @@
-/* ===========================================================
-   Smart Election Voting System — Global Styles
-   Preserves the project's blue-gradient + glassmorphism look.
-   =========================================================== */
+/* Smart Election Voting — global styles */
 
 :root {
   --color-bg-from: rgba(30, 58, 138, 0.85);

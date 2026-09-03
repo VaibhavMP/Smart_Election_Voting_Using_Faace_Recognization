@@ -46,9 +46,7 @@ export default function Results() {
               return (
                 <div className="result-row" key={r.party || i}>
                   <div style={{ flex: 1 }}>
-                    <div className="candidate-name">
-                      {r.name} ({r.party})
-                    </div>
+                    <div className="candidate-name">{r.name} ({r.party})</div>
                     <div className="bar-container">
                       <div className="bar" style={{ width: `${pct}%` }} />
                     </div>
@@ -62,9 +60,7 @@ export default function Results() {
         )}
 
         <div className="action-row">
-          <Link to="/dashboard" className="btn btn-primary">
-            Back to Dashboard
-          </Link>
+          <Link to="/dashboard" className="btn btn-primary">Back to Dashboard</Link>
         </div>
       </div>
     </div>

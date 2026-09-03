@@ -5,11 +5,9 @@ import { faceService } from '../services'
 import WebcamCapture from '../components/WebcamCapture'
 
 export default function FaceVerify() {
-  const { user, justRegistered, markFaceVerified, clearJustRegistered, refresh } =
-    useAuth()
+  const { user, justRegistered, markFaceVerified, clearJustRegistered, refresh } = useAuth()
   const navigate = useNavigate()
 
-  const [image, setImage] = useState(null)
   const [status, setStatus] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -17,7 +15,10 @@ export default function FaceVerify() {
 
   const handleVerify = async (dataUrl) => {
     setSubmitting(true)
-    setStatus({ type: 'pending', text: isRegistration ? 'Saving profile photo...' : 'Verifying face...' })
+    setStatus({
+      type: 'pending',
+      text: isRegistration ? 'Saving profile photo...' : 'Verifying face...',
+    })
     try {
       if (isRegistration) {
         await faceService.register(dataUrl)
@@ -33,12 +34,10 @@ export default function FaceVerify() {
           setTimeout(() => navigate('/vote', { replace: true }), 1200)
         } else {
           setStatus({ type: 'error', text: res.message || 'Verification failed' })
-          setImage(null)
         }
       }
     } catch (err) {
       setStatus({ type: 'error', text: err.message || 'Verification failed' })
-      setImage(null)
     } finally {
       setSubmitting(false)
     }
@@ -57,7 +56,6 @@ export default function FaceVerify() {
         </p>
 
         <WebcamCapture
-          onCapture={setImage}
           captureLabel="Capture Photo"
           verifyLabel={
             submitting
